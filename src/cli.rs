@@ -7,6 +7,7 @@ pub struct Config {
     pub count: u16,
     pub timeout: Duration,
     pub interval: Duration,
+    pub dump_bytes: bool,
 }
 
 pub enum ParseOutcome {
@@ -20,10 +21,12 @@ pub fn parse_args() -> Result<ParseOutcome, String> {
     let mut count = 4u16;
     let mut timeout = Duration::from_secs(1);
     let mut interval = Duration::from_secs(1);
+    let mut dump_bytes = false;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => return Ok(ParseOutcome::Help),
+            "--dump-bytes" => dump_bytes = true,
             "-c" | "--count" => {
                 let value = args
                     .next()
@@ -53,6 +56,7 @@ pub fn parse_args() -> Result<ParseOutcome, String> {
         count,
         timeout,
         interval,
+        dump_bytes,
     }))
 }
 
@@ -63,6 +67,7 @@ Options:
   -c, --count <n>       Number of echo requests to send (default: 4)
   -W, --timeout <ms>    Timeout per request in milliseconds (default: 1000)
   -i, --interval <ms>   Delay between requests in milliseconds (default: 1000)
+  --dump-bytes          Print sent and received packets in hex
   -h, --help            Show this help message
 
 Notes:

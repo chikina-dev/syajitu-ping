@@ -8,7 +8,8 @@ Rust で作った最小構成の `ping` コマンドです。依存クレート�
 cargo run -- --help
 sudo cargo run -- 8.8.8.8
 sudo cargo run -- example.com -c 5 -W 1500 -i 500
-sudo cargo run --bin ping_reply
+sudo cargo run -- 8.8.8.8 --dump-bytes
+sudo cargo run --bin ping_reply -- --dump-bytes
 ```
 
 ## できること

@@ -3,6 +3,7 @@ use std::net::IpAddr;
 use std::process;
 use std::time::Duration;
 
+use rust_ping::bytes::format_hex_dump;
 use rust_ping::icmp::{build_echo_reply, parse_echo_request};
 use rust_ping::socket::RawSocket;
 
@@ -17,10 +18,18 @@ fn main() {
 }
 
 fn run() -> io::Result<()> {
-    if matches!(std::env::args().nth(1).as_deref(), Some("-h" | "--help")) {
-        print_usage();
-        return Ok(());
-    }
+    let dump_bytes = match parse_args() {
+        Ok(Config { dump_bytes }) => dump_bytes,
+        Err(ParseOutcome::Help) => {
+            print_usage();
+            return Ok(());
+        }
+        Err(ParseOutcome::Message(message)) => {
+            eprintln!("{message}\n\n");
+            print_usage();
+            process::exit(2);
+        }
+    };
 
     let socket = match RawSocket::new() {
         Ok(socket) => socket,
@@ -46,6 +55,12 @@ fn run() -> io::Result<()> {
         };
 
         let reply = build_echo_reply(request.identifier, request.sequence, request.payload);
+        if dump_bytes {
+            println!("received packet from {from} ({} bytes):", packet.len());
+            println!("{}", format_hex_dump(&packet));
+            println!("sending echo reply to {from} ({} bytes):", reply.len());
+            println!("{}", format_hex_dump(&reply));
+        }
         socket.send_to(ipv4, &reply)?;
 
         println!(
@@ -58,11 +73,38 @@ fn run() -> io::Result<()> {
     }
 }
 
+struct Config {
+    dump_bytes: bool,
+}
+
+enum ParseOutcome {
+    Help,
+    Message(String),
+}
+
+fn parse_args() -> Result<Config, ParseOutcome> {
+    let mut dump_bytes = false;
+
+    for arg in std::env::args().skip(1) {
+        match arg.as_str() {
+            "-h" | "--help" => return Err(ParseOutcome::Help),
+            "--dump-bytes" => dump_bytes = true,
+            _ => return Err(ParseOutcome::Message(format!("unknown argument: {arg}"))),
+        }
+    }
+
+    Ok(Config { dump_bytes })
+}
+
 fn print_usage() {
     println!(
         "Usage: ping_reply
 
 Listens for ICMP Echo Request packets and sends Echo Reply packets back.
+
+Options:
+  --dump-bytes          Print received and sent packets in hex
+  -h, --help            Show this help message
 
 Notes:
   - IPv4 only

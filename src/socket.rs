@@ -199,12 +199,12 @@ impl RawSocket {
         identifier: u16,
         sequence: u16,
         timeout: Duration,
-    ) -> io::Result<(Reply, IpAddr)> {
+    ) -> io::Result<(Reply, IpAddr, Vec<u8>)> {
         loop {
             let (packet, from) = self.receive_packet(timeout)?;
             if let Some(reply) = parse_echo_reply(&packet) {
                 if reply.identifier == identifier && reply.sequence == sequence {
-                    return Ok((reply, from));
+                    return Ok((reply, from, packet));
                 }
             }
         }

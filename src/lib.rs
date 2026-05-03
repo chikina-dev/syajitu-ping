@@ -5,10 +5,12 @@ use std::thread;
 use std::time::Instant;
 
 pub mod cli;
+pub mod bytes;
 pub mod icmp;
 pub mod socket;
 pub mod stats;
 
+use bytes::format_hex_dump;
 use cli::{parse_args, ParseOutcome};
 use icmp::{build_echo_request, packet_size};
 use socket::RawSocket;
@@ -53,10 +55,14 @@ pub fn run() -> io::Result<()> {
         stats.sent += 1;
         let packet = build_echo_request(identifier, sequence);
         let sent_at = Instant::now();
+        if config.dump_bytes {
+            println!("sent icmp echo request ({} bytes):", packet.len());
+            println!("{}", format_hex_dump(&packet));
+        }
         socket.send_to(destination, &packet)?;
 
         match socket.receive_reply(identifier, sequence, config.timeout) {
-            Ok((reply, from)) => {
+            Ok((reply, from, raw_packet)) => {
                 let rtt = sent_at.elapsed();
                 stats.record_reply(rtt);
                 println!(
@@ -67,6 +73,10 @@ pub fn run() -> io::Result<()> {
                     reply.ttl,
                     rtt.as_secs_f64() * 1000.0
                 );
+                if config.dump_bytes {
+                    println!("received packet ({} bytes):", raw_packet.len());
+                    println!("{}", format_hex_dump(&raw_packet));
+                }
             }
             Err(error) if socket::is_timeout(&error) => {
                 println!("Request timeout for icmp_seq {sequence}");
